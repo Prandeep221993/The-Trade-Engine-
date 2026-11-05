@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Groww Equity P&L & Tax Calculator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN for mobile charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            groww: {
+              teal: '#00D09C',
+              darkTeal: '#00b386',
+              bgDark: '#12161A',
+              cardDark: '#1A2027',
+              borderDark: '#2C3440',
+              accentRed: '#EB5757',
+              accentGreen: '#00D09C'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom mobile scrollbars and touch helpers */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 9999px;
+    }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    .tap-highlight-transparent {
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body class="bg-[#0e1217] text-slate-100 min-h-screen flex flex-col items-center pb-20 font-sans selection:bg-teal-500 selection:text-white">
+
+  <!-- Mobile Top App Bar -->
+  <header class="w-full max-w-md bg-[#161c24]/90 backdrop-blur-md sticky top-0 z-30 border-b border-slate-800 px-4 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-900 shadow-lg shadow-teal-500/20 font-black text-lg">
+        G
+      </div>
+      <div>
+        <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5 leading-tight">
+          Groww P&L Calculator
+        </h1>
+        <p class="text-[11px] font-medium text-slate-400">NSE/BSE • Brokerage & Tax Engine</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-1">
+      <button id="helpBtn" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center text-xs tap-highlight-transparent transition" title="Fee Schedule">
+        <i class="fa-solid fa-circle-info"></i>
+      </button>
+      <button id="viewAnalyticsToggleBtn" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center text-xs tap-highlight-transparent transition" title="Analytics & Charts">
+        <i class="fa-solid fa-chart-pie"></i>
+      </button>
+      <button id="viewHistoryToggleBtn" class="relative w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center text-xs tap-highlight-transparent transition" title="View Saved Trades">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <span id="historyBadge" class="hidden absolute -top-1 -right-1 bg-teal-500 text-slate-950 font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-md px-3.5 py-3 space-y-4">
+
+    <!-- Segmented Control (Tabs) -->
+    <div class="bg-[#18202a] p-1.5 rounded-2xl flex border border-slate-800 relative shadow-inner">
+      <button id="tabIntraday" onclick="switchMode('intraday')" class="w-1/2 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-teal-500 text-slate-950 shadow-md">
+        <i class="fa-solid fa-bolt text-xs"></i> Intraday (MIS)
+      </button>
+      <button id="tabDelivery" onclick="switchMode('delivery')" class="w-1/2 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-cubes text-xs"></i> Delivery (CNC)
+      </button>
+    </div>
+
+    <!-- Quick Load Pre-filled Examples -->
+    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
+      <span class="text-slate-400 text-xs shrink-0 font-medium mr-1"><i class="fa-solid fa-wand-magic-sparkles text-teal-400"></i> Try:</span>
+      <button onclick="loadExample(10, 50, 65, 'SUZLON')" class="bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 rounded-full px-2.5 py-1 text-slate-300 shrink-0 tap-highlight-transparent transition active:scale-95">
+        10 @ ₹50 → ₹65
+      </button>
+      <button onclick="loadExample(22, 1401, 1416, 'INFY')" class="bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 rounded-full px-2.5 py-1 text-slate-300 shrink-0 tap-highlight-transparent transition active:scale-95">
+        22 @ ₹1401 → ₹1416
+      </button>
+      <button onclick="loadExample(22, 1438, 1442, 'HDFCBANK')" class="bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 rounded-full px-2.5 py-1 text-slate-300 shrink-0 tap-highlight-transparent transition active:scale-95">
+        22 @ ₹1438 → ₹1442
+      </button>
+    </div>
+
+    <!-- Live Result Summary Hero Card -->
+    <div id="resultHeroCard" class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1b232c] to-[#141a21] border border-slate-800 p-4 shadow-xl transition-all duration-300">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Actual Net Return</span>
+          <div class="flex items-baseline gap-2 mt-0.5">
+            <h2 id="netPnLDisplay" class="text-3xl font-extrabold tracking-tight text-teal-400">
+              ₹0.00
+            </h2>
+            <span id="netPercentDisplay" class="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400">
+              +0.00%
+            </span>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] text-slate-400 uppercase font-semibold">Gross P&L</span>
+          <div id="grossPnLDisplay" class="text-sm font-semibold text-slate-200 mt-0.5">₹0.00</div>
+          <div id="statusBadge" class="inline-flex text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-1">Neutral</div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Strip -->
+      <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80 text-center">
+        <div class="bg-slate-900/40 p-2 rounded-xl border border-slate-800/40">
+          <div class="text-[10px] text-slate-400 font-medium">Charges & Taxes</div>
+          <div id="totalDeductionsDisplay" class="text-xs sm:text-sm font-bold text-amber-400 mt-0.5">₹0.00</div>
+        </div>
+        <div class="bg-slate-900/40 p-2 rounded-xl border border-slate-800/40">
+          <div class="text-[10px] text-slate-400 font-medium">Total Turnover</div>
+          <div id="totalTurnoverDisplay" class="text-xs sm:text-sm font-bold text-slate-200 mt-0.5">₹0.00</div>
+        </div>
+        <div class="bg-slate-900/40 p-2 rounded-xl border border-slate-800/40">
+          <div class="text-[10px] text-slate-400 font-medium">Breakeven Sell</div>
+          <div id="breakevenPriceDisplay" class="text-xs sm:text-sm font-bold text-sky-400 mt-0.5">₹0.00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inputs Form Card -->
+    <div class="bg-[#18202a] rounded-2xl border border-slate-800 p-4 space-y-3.5 shadow-md">
+      
+      <!-- Dates Section -->
+      <div id="intradayDateField" class="space-y-1">
+        <label class="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
+          <span><i class="fa-regular fa-calendar text-teal-400 mr-1"></i> Trade Date</span>
+          <span class="text-[10px] text-slate-400">Same-day settlement</span>
+        </label>
+        <input type="date" id="tradeDate" class="w-full bg-[#11161d] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500 font-medium" />
+      </div>
+
+      <div id="deliveryDateFields" class="hidden grid-cols-2 gap-2.5">
+        <div class="space-y-1">
+          <label class="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-arrow-down text-emerald-400 text-[10px]"></i> Buy Date
+          </label>
+          <input type="date" id="buyDate" class="w-full bg-[#11161d] border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500 font-medium" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-arrow-up text-rose-400 text-[10px]"></i> Sell Date
+          </label>
+          <input type="date" id="sellDate" class="w-full bg-[#11161d] border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500 font-medium" />
+        </div>
+      </div>
+
+      <!-- Stock Symbol & Quantity -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="col-span-2 space-y-1">
+          <label class="text-[11px] font-semibold text-slate-400">Stock Name / Ticker</label>
+          <div class="relative">
+            <input type="text" id="stockName" placeholder="e.g. TATASTEEL" value="TATASTEEL" class="w-full bg-[#11161d] border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs uppercase font-bold text-white tracking-wider placeholder:text-slate-600 focus:outline-none focus:border-teal-500" />
+            <button onclick="clearStockName()" class="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 text-xs">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[11px] font-semibold text-slate-400">Quantity</label>
+          <input type="number" id="qty" inputmode="numeric" min="1" step="1" value="22" class="w-full bg-[#11161d] border border-slate-700/80 rounded-xl px-2 py-2.5 text-center text-sm font-bold text-white focus:outline-none focus:border-teal-500" />
+        </div>
+      </div>
+
+      <!-- Buy Price & Sell Price -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <!-- Buy Price -->
+        <div class="space-y-1">
+          <div class="flex justify-between items-center text-[11px] font-semibold text-slate-400">
+            <span>Buy Price (₹)</span>
+            <span id="buyValueLabel" class="text-[10px] text-teal-400 font-bold">₹0</span>
+          </div>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 text-slate-500 font-bold text-xs">₹</span>
+            <input type="number" id="buyPrice" inputmode="decimal" step="any" value="1401" class="w-full bg-[#11161d] border border-slate-700/80 rounded-xl pl-7 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-teal-500" placeholder="0.00" />
+          </div>
+        </div>
+
+        <!-- Sell Price -->
+        <div class="space-y-1">
+          <div class="flex justify-between items-center text-[11px] font-semibold text-slate-400">
+            <span>Sell Price (₹)</span>
+            <span id="sellValueLabel" class="text-[10px] text-emerald-400 font-bold">₹0</span>
+          </div>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 text-slate-500 font-bold text-xs">₹</span>
+            <input type="number" id="sellPrice" inputmode="decimal" step="any" value="1416" class="w-full bg-[#11161d] border border-slate-700/80 rounded-xl pl-7 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-teal-500" placeholder="0.00" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Step Buttons -->
+      <div class="flex items-center justify-between gap-1 text-[11px] pt-1">
+        <span class="text-slate-400 text-[10px] uppercase font-semibold">Tweak Sell:</span>
+        <div class="flex gap-1.5">
+          <button onclick="adjustSellPrice(-1)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 font-medium active:scale-95 transition">-₹1</button>
+          <button onclick="adjustSellPrice(-0.5)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 font-medium active:scale-95 transition">-50p</button>
+          <button onclick="adjustSellPrice(0.5)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 font-medium active:scale-95 transition">+50p</button>
+          <button onclick="adjustSellPrice(1)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 font-medium active:scale-95 transition">+₹1</button>
+          <button onclick="setBreakevenAsSell()" class="px-2.5 py-1 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 rounded-lg font-semibold active:scale-95 transition">Target BE</button>
+        </div>
+      </div>
+
+      <!-- Save Trade Button -->
+      <button onclick="saveCurrentTrade()" class="w-full mt-2 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 active:scale-[0.99] text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2">
+        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Trade to Phone
+      </button>
+    </div>
+
+    <!-- Deductions & Taxes Breakdown Accordion -->
+    <div class="bg-[#18202a] rounded-2xl border border-slate-800 overflow-hidden shadow-md">
+      <button onclick="toggleDeductionsAccordion()" class="w-full p-4 flex items-center justify-between text-left hover:bg-slate-800/40 transition">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-receipt"></i>
+          </div>
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold text-white">Govt Taxes & Groww Deductions</h3>
+            <p id="deductionSubtitle" class="text-[10px] text-slate-400">Total ₹0.00 will be debited</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="accordionTotalPill" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-slate-700">₹0.00</span>
+          <i id="accordionChevron" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
+        </div>
+      </button>
+
+      <div id="deductionsContent" class="hidden px-4 pb-4 space-y-2.5 text-xs border-t border-slate-800/80 pt-3">
+        <!-- Groww Brokerage -->
+        <div class="flex justify-between items-center py-1">
+          <div>
+            <div class="text-slate-200 font-semibold flex items-center gap-1.5">
+              <span>Groww Brokerage</span>
+              <span id="brokerageRuleTag" class="text-[9px] bg-slate-800 px-1.5 py-0.2 rounded text-slate-400">₹20 cap or 0.1%</span>
+            </div>
+            <div class="text-[10px] text-slate-500" id="brokerageSubDetail">Buy: ₹0.00 | Sell: ₹0.00 (min ₹5 floor)</div>
+          </div>
+          <span id="feeBrokerage" class="font-bold text-slate-200">₹0.00</span>
+        </div>
+
+        <!-- DP Charges -->
+        <div class="flex justify-between items-center py-1 border-t border-slate-800/60">
+          <div>
+            <div class="text-slate-200 font-semibold flex items-center gap-1.5">
+              <span>DP Charges</span>
+              <span id="dpTag" class="text-[9px] bg-teal-500/10 text-teal-400 px-1.5 rounded">Delivery Only</span>
+            </div>
+            <div class="text-[10px] text-slate-500" id="dpSubDetail">₹16.50 (Groww) + ₹3.50 (CDSL)</div>
+          </div>
+          <span id="feeDP" class="font-bold text-slate-200">₹0.00</span>
+        </div>
+
+        <!-- STT -->
+        <div class="flex justify-between items-center py-1 border-t border-slate-800/60">
+          <div>
+            <div class="text-slate-200 font-semibold flex items-center gap-1.5">
+              <span>Securities Transaction Tax (STT)</span>
+            </div>
+            <div class="text-[10px] text-slate-500" id="sttSubDetail">Rate applied based on trading mode</div>
+          </div>
+          <span id="feeSTT" class="font-bold text-slate-200">₹0.00</span>
+        </div>
+
+        <!-- Exchange Txn & SEBI/IPFT -->
+        <div class="flex justify-between items-center py-1 border-t border-slate-800/60">
+          <div>
+            <div class="text-slate-200 font-semibold">Exchange Txn & SEBI Charges</div>
+            <div class="text-[10px] text-slate-500">NSE (~0.00297%) + SEBI turnover (0.0001%)</div>
+          </div>
+          <span id="feeExchange" class="font-bold text-slate-200">₹0.00</span>
+        </div>
+
+        <!-- Stamp Duty -->
+        <div class="flex justify-between items-center py-1 border-t border-slate-800/60">
+          <div>
+            <div class="text-slate-200 font-semibold">Stamp Duty</div>
+            <div class="text-[10px] text-slate-500" id="stampSubDetail">Govt stamp duty on buy side value</div>
+          </div>
+          <span id="feeStamp" class="font-bold text-slate-200">₹0.00</span>
+        </div>
+
+        <!-- GST -->
+        <div class="flex justify-between items-center py-1 border-t border-slate-800/60">
+          <div>
+            <div class="text-slate-200 font-semibold">GST (18%)</div>
+            <div class="text-[10px] text-slate-500">18% on (Brokerage + Exchange Fees + DP Charges)</div>
+          </div>
+          <span id="feeGST" class="font-bold text-slate-200">₹0.00</span>
+        </div>
+
+        <!-- Summary Total Inside -->
+        <div class="flex justify-between items-center pt-2.5 border-t border-slate-700/80 font-bold">
+          <span class="text-slate-300">Total Statutory & Platform Fees:</span>
+          <span id="feeTotalSummary" class="text-amber-400 text-sm">₹0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics & Charts Section (Monthly Histogram & Pie Charts) -->
+    <div id="analyticsSection" class="bg-[#18202a] rounded-2xl border border-slate-800 p-4 space-y-4 shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-chart-simple"></i>
+          </div>
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold text-white">Monthly Analytics & Charts</h3>
+            <p class="text-[10px] text-slate-400">P&L Histograms & Tax/Cost Distributions</p>
+          </div>
+        </div>
+        <button onclick="toggleAnalyticsView()" id="analyticsMinimizeBtn" class="text-slate-400 hover:text-white p-1 text-xs">
+          <i class="fa-solid fa-chevron-up"></i>
+        </button>
+      </div>
+
+      <div id="analyticsBody" class="space-y-4">
+        <!-- Monthly Histogram -->
+        <div class="bg-[#11161d] p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-chart-column text-teal-400"></i> Monthly Net P&L (Histogram)
+            </span>
+            <span id="monthlyBestPill" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-semibold">0 Months</span>
+          </div>
+          <div class="relative w-full h-48">
+            <canvas id="monthlyPnlChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Donut & Pie Charts Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Deductions Split Donut -->
+          <div class="bg-[#11161d] p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <div class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5 mb-2">
+              <i class="fa-solid fa-chart-pie text-amber-400"></i> Charges & Tax Split
+            </div>
+            <div class="relative w-full h-40">
+              <canvas id="taxBreakdownChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Win/Loss Ratio Pie -->
+          <div class="bg-[#11161d] p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <div class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5 mb-2">
+              <i class="fa-solid fa-circle-notch text-emerald-400"></i> Win / Loss Trades
+            </div>
+            <div class="relative w-full h-40">
+              <canvas id="winLossChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trade History / Log Section (Collapsible / Dynamic) -->
+    <div id="historySection" class="bg-[#18202a] rounded-2xl border border-slate-800 p-4 space-y-3 shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-teal-400 text-sm"></i>
+          <h3 class="text-sm font-bold text-white">Trade Book & History</h3>
+        </div>
+        <!-- Export & Clear Action Buttons -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="exportToCSV()" class="text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-lg font-bold flex items-center gap-1 transition" title="Export to CSV">
+            <i class="fa-solid fa-file-csv"></i> CSV
+          </button>
+          <button onclick="exportToExcel()" class="text-[10px] bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 px-2 py-1 rounded-lg font-bold flex items-center gap-1 transition" title="Export to Excel">
+            <i class="fa-solid fa-file-excel"></i> Excel
+          </button>
+          <button onclick="exportTradeHistory()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700 transition" title="Copy Text">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+          <button onclick="clearHistory()" class="text-[10px] bg-slate-800 hover:bg-rose-900/40 text-rose-300 px-2 py-1 rounded-lg border border-slate-700 transition" title="Clear All">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- History Stats -->
+      <div class="flex items-center justify-between bg-[#11161d] px-3 py-2 rounded-xl border border-slate-800 text-[11px]">
+        <div class="text-slate-400">Total Saved: <span id="histCount" class="font-bold text-white">0</span></div>
+        <div class="text-slate-400">Cumulative Net P&L: <span id="histNetTotal" class="font-bold text-slate-200">₹0.00</span></div>
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="flex gap-1.5 text-[10px]">
+        <button id="filterAll" onclick="setHistoryFilter('ALL')" class="px-2.5 py-1 rounded-full bg-teal-500 text-slate-950 font-bold">All</button>
+        <button id="filterIntraday" onclick="setHistoryFilter('INTRADAY')" class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold">Intraday</button>
+        <button id="filterDelivery" onclick="setHistoryFilter('DELIVERY')" class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold">Delivery</button>
+      </div>
+
+      <!-- Items List -->
+      <div id="historyListContainer" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+        <div class="text-center py-6 text-slate-500 text-xs">
+          No trades logged yet. Fill out the details above and hit "Save Trade to Phone".
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Help & Rules Modal -->
+  <div id="helpModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center px-4 hidden">
+    <div class="bg-[#1a212b] border border-slate-700 rounded-2xl w-full max-w-sm p-4 space-y-3.5 shadow-2xl max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+          <i class="fa-solid fa-scale-balanced text-teal-400"></i> Groww Equity Charge Sheet
+        </h4>
+        <button onclick="closeHelpModal()" class="text-slate-400 hover:text-white p-1 text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-[#12171f] p-2.5 rounded-xl border border-slate-800">
+          <div class="font-bold text-teal-400 mb-0.5">Groww Brokerage Formula</div>
+          <p class="text-[11px] text-slate-300">₹20 or 0.1% of trade value (whichever is lower) per executed order, subject to a minimum floor of ₹5 per executed order.</p>
+        </div>
+
+        <div class="bg-[#12171f] p-2.5 rounded-xl border border-slate-800">
+          <div class="font-bold text-amber-400 mb-0.5">DP Charges (Delivery Only)</div>
+          <p class="text-[11px] text-slate-300">₹20 flat (+ 18% GST = ₹23.60) debited per scrip on sell side from demat. Intraday incurs ₹0 DP charges.</p>
+        </div>
+
+        <div class="bg-[#12171f] p-2.5 rounded-xl border border-slate-800">
+          <div class="font-bold text-sky-400 mb-0.5">Securities Transaction Tax (STT)</div>
+          <ul class="list-disc pl-4 space-y-0.5 text-[11px]">
+            <li><strong>Intraday:</strong> 0.025% on sell value only.</li>
+            <li><strong>Delivery:</strong> 0.1% on buy value + 0.1% on sell value.</li>
+          </ul>
+        </div>
+
+        <div class="bg-[#12171f] p-2.5 rounded-xl border border-slate-800">
+          <div class="font-bold text-indigo-400 mb-0.5">Other Regulatory Levies</div>
+          <ul class="list-disc pl-4 space-y-0.5 text-[11px]">
+            <li><strong>Exchange Txn:</strong> NSE ~0.00297% on turnover.</li>
+            <li><strong>SEBI Turnover:</strong> ₹10 per crore (0.0001%).</li>
+            <li><strong>Stamp Duty:</strong> 0.003% (Intraday buy) vs 0.015% (Delivery buy).</li>
+            <li><strong>GST:</strong> 18% on (Brokerage + Txn/SEBI + DP charges).</li>
+          </ul>
+        </div>
+      </div>
+
+      <button onclick="closeHelpModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold">
+        Close Window
+      </button>
+    </div>
+  </div>
+
+  <!-- In-App Notification Toast (Replaces alerts) -->
+  <div id="toastMessage" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 border border-teal-500/50 text-white px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 z-50">
+    <i class="fa-solid fa-circle-check text-teal-400"></i>
+    <span id="toastText">Trade saved successfully!</span>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // State
+    let currentMode = 'intraday'; // 'intraday' or 'delivery'
+    let currentHistoryFilter = 'ALL';
+    let tradesHistory = [];
+    let pnlChartInstance = null;
+    let taxChartInstance = null;
+    let winLossChartInstance = null;
+
+    // Initialize dates to today
+    window.onload = function() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('tradeDate').value = today;
+      document.getElementById('buyDate').value = today;
+      document.getElementById('sellDate').value = today;
+
+      // Load saved history
+      loadHistoryFromStorage();
+      
+      // Hook event listeners for live recalculation
+      const inputs = ['qty', 'buyPrice', 'sellPrice', 'stockName'];
+      inputs.forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', calculateAll);
+        el.addEventListener('change', calculateAll);
+      });
+
+      // Help Modal listeners
+      document.getElementById('helpBtn').addEventListener('click', () => {
+        document.getElementById('helpModal').classList.remove('hidden');
+      });
+
+      // Quick scroll to Analytics
+      document.getElementById('viewAnalyticsToggleBtn').addEventListener('click', () => {
+        const analyticsSec = document.getElementById('analyticsSection');
+        analyticsSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+
+      // Toggle History quick scroll
+      document.getElementById('viewHistoryToggleBtn').addEventListener('click', () => {
+        const historySec = document.getElementById('historySection');
+        historySec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+
+      // Initial run & Chart Render
+      calculateAll();
+      updateCharts();
+    };
+
+    function switchMode(mode) {
+      currentMode = mode;
+      const tabIntraday = document.getElementById('tabIntraday');
+      const tabDelivery = document.getElementById('tabDelivery');
+      const intradayDateField = document.getElementById('intradayDateField');
+      const deliveryDateFields = document.getElementById('deliveryDateFields');
+
+      if (mode === 'intraday') {
+        tabIntraday.className = "w-1/2 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-teal-500 text-slate-950 shadow-md";
+        tabDelivery.className = "w-1/2 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+        intradayDateField.classList.remove('hidden');
+        deliveryDateFields.classList.add('hidden');
+        deliveryDateFields.classList.remove('grid');
+      } else {
+        tabDelivery.className = "w-1/2 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-teal-500 text-slate-950 shadow-md";
+        tabIntraday.className = "w-1/2 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+        intradayDateField.classList.add('hidden');
+        deliveryDateFields.classList.remove('hidden');
+        deliveryDateFields.classList.add('grid');
+      }
+
+      calculateAll();
+    }
+
+    function loadExample(qty, buy, sell, stock) {
+      document.getElementById('qty').value = qty;
+      document.getElementById('buyPrice').value = buy;
+      document.getElementById('sellPrice').value = sell;
+      if (stock) document.getElementById('stockName').value = stock;
+      calculateAll();
+      showToast(`Loaded example: ${qty} shares of ${stock || 'STOCK'}!`);
+    }
+
+    function clearStockName() {
+      document.getElementById('stockName').value = '';
+      document.getElementById('stockName').focus();
+    }
+
+    function adjustSellPrice(amount) {
+      const sellInput = document.getElementById('sellPrice');
+      let val = parseFloat(sellInput.value) || 0;
+      val = Math.max(0.05, +(val + amount).toFixed(2));
+      sellInput.value = val;
+      calculateAll();
+    }
+
+    // Groww Specific Brokerage Engine
+    // Rule: ₹20 or 0.1% per executed order (whichever is lower), with minimum floor of ₹5 per order.
+    function calcGrowwBrokeragePerOrder(turnover) {
+      if (turnover <= 0) return 0;
+      const pctFee = turnover * 0.001; // 0.1%
+      let capped = Math.min(20, pctFee);
+      return Math.max(5, capped); // Apply ₹5 floor
+    }
+
+    function calculateDeductions(qty, buyPrice, sellPrice, mode) {
+      const buyValue = qty * buyPrice;
+      const sellValue = qty * sellPrice;
+      const turnover = buyValue + sellValue;
+      const isDelivery = (mode === 'delivery');
+
+      if (buyValue <= 0 && sellValue <= 0) {
+        return {
+          buyValue: 0,
+          sellValue: 0,
+          turnover: 0,
+          brokerageBuy: 0,
+          brokerageSell: 0,
+          brokerage: 0,
+          dpCharges: 0,
+          stt: 0,
+          exchangeTxn: 0,
+          sebiCharges: 0,
+          stampDuty: 0,
+          gst: 0,
+          totalDeductions: 0
+        };
+      }
+
+      // 1. Groww Brokerage
+      const brokerageBuy = buyValue > 0 ? calcGrowwBrokeragePerOrder(buyValue) : 0;
+      const brokerageSell = sellValue > 0 ? calcGrowwBrokeragePerOrder(sellValue) : 0;
+      const brokerage = +(brokerageBuy + brokerageSell).toFixed(2);
+
+      // 2. DP Charges (Delivery only on sell side from Demat: ₹16.50 Groww + ₹3.50 CDSL = ₹20)
+      const dpCharges = (isDelivery && sellValue > 0) ? 20.00 : 0.00;
+
+      // 3. STT / CTT
+      // Intraday: 0.025% on sell side
+      // Delivery: 0.1% on buy side + 0.1% on sell side
+      let stt = 0;
+      if (isDelivery) {
+        stt = +( (buyValue * 0.001) + (sellValue * 0.001) ).toFixed(2);
+      } else {
+        stt = +( sellValue * 0.00025 ).toFixed(2);
+      }
+
+      // 4. Exchange Transaction Charges (NSE ~0.00297%) + SEBI (₹10 / Crore = 0.0001%)
+      const nseTxnRate = 0.0000297; 
+      const sebiRate = 0.000001;
+      const exchangeTxn = +(turnover * nseTxnRate).toFixed(2);
+      const sebiCharges = +(turnover * sebiRate).toFixed(2);
+      const exchAndSebi = +(exchangeTxn + sebiCharges).toFixed(2);
+
+      // 5. Stamp Duty (on Buy Value only)
+      // Intraday: 0.003%
+      // Delivery: 0.015%
+      const stampRate = isDelivery ? 0.00015 : 0.00003;
+      const stampDuty = +(buyValue * stampRate).toFixed(2);
+
+      // 6. GST: 18% on (Brokerage + Exchange Fees + DP Charges)
+      const gstTaxable = brokerage + exchAndSebi + dpCharges;
+      const gst = +(gstTaxable * 0.18).toFixed(2);
+
+      // Total Deductions
+      const totalDeductions = +(brokerage + dpCharges + stt + exchAndSebi + stampDuty + gst).toFixed(2);
+
+      return {
+        buyValue,
+        sellValue,
+        turnover,
+        brokerageBuy,
+        brokerageSell,
+        brokerage,
+        dpCharges,
+        stt,
+        exchangeTxn: exchAndSebi,
+        stampDuty,
+        gst,
+        totalDeductions
+      };
+    }
+
+    // Solve for breakeven price with numerical convergence
+    function calculateBreakevenPrice(qty, buyPrice, mode) {
+      if (qty <= 0 || buyPrice <= 0) return 0;
+      let targetSell = buyPrice;
+      const buyVal = qty * buyPrice;
+
+      // Iteratively approach netPnL == 0
+      for (let i = 0; i < 8; i++) {
+        const fees = calculateDeductions(qty, buyPrice, targetSell, mode);
+        const gross = (qty * targetSell) - buyVal;
+        const net = gross - fees.totalDeductions;
+        if (Math.abs(net) < 0.01) break;
+        targetSell = targetSell - (net / qty);
+      }
+      return +(targetSell).toFixed(2);
+    }
+
+    function calculateAll() {
+      const qty = Math.max(0, parseInt(document.getElementById('qty').value) || 0);
+      const buyPrice = Math.max(0, parseFloat(document.getElementById('buyPrice').value) || 0);
+      const sellPrice = Math.max(0, parseFloat(document.getElementById('sellPrice').value) || 0);
+
+      const d = calculateDeductions(qty, buyPrice, sellPrice, currentMode);
+
+      const grossPnL = +(d.sellValue - d.buyValue).toFixed(2);
+      const netPnL = +(grossPnL - d.totalDeductions).toFixed(2);
+
+      // Total investment outlay for net % return
+      const totalCapital = d.buyValue > 0 ? d.buyValue : 1;
+      const netPercentage = +((netPnL / totalCapital) * 100).toFixed(2);
+
+      const breakevenPrice = calculateBreakevenPrice(qty, buyPrice, currentMode);
+
+      // Render Display Elements
+      document.getElementById('buyValueLabel').textContent = '₹' + formatINR(d.buyValue);
+      document.getElementById('sellValueLabel').textContent = '₹' + formatINR(d.sellValue);
+      document.getElementById('totalTurnoverDisplay').textContent = '₹' + formatINR(d.turnover);
+      document.getElementById('totalDeductionsDisplay').textContent = '₹' + formatINR(d.totalDeductions);
+      document.getElementById('breakevenPriceDisplay').textContent = '₹' + breakevenPrice.toFixed(2);
+      document.getElementById('grossPnLDisplay').textContent = (grossPnL >= 0 ? '+₹' : '-₹') + formatINR(Math.abs(grossPnL));
+
+      // Net Return badge & styles
+      const netPnLEl = document.getElementById('netPnLDisplay');
+      const netPctEl = document.getElementById('netPercentDisplay');
+      const statusBadge = document.getElementById('statusBadge');
+      const heroCard = document.getElementById('resultHeroCard');
+
+      if (netPnL > 0) {
+        netPnLEl.textContent = '+₹' + formatINR(netPnL);
+        netPnLEl.className = 'text-3xl font-extrabold tracking-tight text-teal-400';
+        netPctEl.textContent = `+${netPercentage}%`;
+        netPctEl.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30';
+        statusBadge.textContent = 'PROFIT';
+        statusBadge.className = 'inline-flex text-[10px] uppercase font-bold text-teal-400 tracking-wider mt-1';
+        heroCard.className = 'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#122b22] to-[#121c19] border border-teal-800/40 p-4 shadow-xl shadow-teal-950/20 transition-all duration-300';
+      } else if (netPnL < 0) {
+        netPnLEl.textContent = '-₹' + formatINR(Math.abs(netPnL));
+        netPnLEl.className = 'text-3xl font-extrabold tracking-tight text-rose-400';
+        netPctEl.textContent = `${netPercentage}%`;
+        netPctEl.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30';
+        statusBadge.textContent = 'LOSS';
+        statusBadge.className = 'inline-flex text-[10px] uppercase font-bold text-rose-400 tracking-wider mt-1';
+        heroCard.className = 'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#2f181b] to-[#1d1215] border border-rose-900/40 p-4 shadow-xl shadow-rose-950/20 transition-all duration-300';
+      } else {
+        netPnLEl.textContent = '₹0.00';
+        netPnLEl.className = 'text-3xl font-extrabold tracking-tight text-slate-300';
+        netPctEl.textContent = '0.00%';
+        netPctEl.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400';
+        statusBadge.textContent = 'NEUTRAL';
+        statusBadge.className = 'inline-flex text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-1';
+        heroCard.className = 'relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1b232c] to-[#141a21] border border-slate-800 p-4 shadow-xl transition-all duration-300';
+      }
+
+      // Update Breakdown details
+      document.getElementById('feeBrokerage').textContent = '₹' + d.brokerage.toFixed(2);
+      document.getElementById('brokerageSubDetail').textContent = `Buy: ₹${d.brokerageBuy.toFixed(2)} | Sell: ₹${d.brokerageSell.toFixed(2)}`;
+      document.getElementById('feeDP').textContent = '₹' + d.dpCharges.toFixed(2);
+      document.getElementById('dpTag').textContent = currentMode === 'delivery' ? '₹20 (Groww + CDSL)' : '₹0 (Intraday)';
+      document.getElementById('feeSTT').textContent = '₹' + d.stt.toFixed(2);
+      document.getElementById('sttSubDetail').textContent = currentMode === 'delivery' 
+        ? '0.1% on Buy (₹' + (d.buyValue*0.001).toFixed(2) + ') + 0.1% on Sell (₹' + (d.sellValue*0.001).toFixed(2) + ')' 
+        : '0.025% on Sell only (₹' + (d.sellValue*0.00025).toFixed(2) + ')';
+      document.getElementById('feeExchange').textContent = '₹' + d.exchangeTxn.toFixed(2);
+      document.getElementById('feeStamp').textContent = '₹' + d.stampDuty.toFixed(2);
+      document.getElementById('stampSubDetail').textContent = currentMode === 'delivery' ? '0.015% on buy' : '0.003% on buy';
+      document.getElementById('feeGST').textContent = '₹' + d.gst.toFixed(2);
+      document.getElementById('feeTotalSummary').textContent = '₹' + d.totalDeductions.toFixed(2);
+      document.getElementById('accordionTotalPill').textContent = '₹' + d.totalDeductions.toFixed(2);
+      document.getElementById('deductionSubtitle').textContent = `Total ₹${d.totalDeductions.toFixed(2)} debited automatically`;
+    }
+
+    function setBreakevenAsSell() {
+      const qty = Math.max(0, parseInt(document.getElementById('qty').value) || 0);
+      const buyPrice = Math.max(0, parseFloat(document.getElementById('buyPrice').value) || 0);
+      if (qty <= 0 || buyPrice <= 0) return;
+      const be = calculateBreakevenPrice(qty, buyPrice, currentMode);
+      document.getElementById('sellPrice').value = be;
+      calculateAll();
+      showToast(`Sell price set to breakeven: ₹${be}`);
+    }
+
+    function toggleDeductionsAccordion() {
+      const content = document.getElementById('deductionsContent');
+      const chevron = document.getElementById('accordionChevron');
+      const isHidden = content.classList.contains('hidden');
+      if (isHidden) {
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+      } else {
+        content.classList.add('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    function closeHelpModal() {
+      document.getElementById('helpModal').classList.add('hidden');
+    }
+
+    // Trade History Management
+    function saveCurrentTrade() {
+      const stock = (document.getElementById('stockName').value.trim() || 'EQUITY').toUpperCase();
+      const qty = parseInt(document.getElementById('qty').value) || 0;
+      const buyPrice = parseFloat(document.getElementById('buyPrice').value) || 0;
+      const sellPrice = parseFloat(document.getElementById('sellPrice').value) || 0;
+
+      if (qty <= 0 || buyPrice <= 0 || sellPrice <= 0) {
+        showToast('Please enter valid Qty and Prices!');
+        return;
+      }
+
+      const d = calculateDeductions(qty, buyPrice, sellPrice, currentMode);
+      const grossPnL = +(d.sellValue - d.buyValue).toFixed(2);
+      const netPnL = +(grossPnL - d.totalDeductions).toFixed(2);
+      const totalCapital = d.buyValue > 0 ? d.buyValue : 1;
+      const netPct = +((netPnL / totalCapital) * 100).toFixed(2);
+
+      let tradeDateInfo = '';
+      if (currentMode === 'intraday') {
+        tradeDateInfo = document.getElementById('tradeDate').value || new Date().toISOString().split('T')[0];
+      } else {
+        const bD = document.getElementById('buyDate').value || '-';
+        const sD = document.getElementById('sellDate').value || '-';
+        tradeDateInfo = `B: ${bD} | S: ${sD}`;
+      }
+
+      const newTrade = {
+        id: Date.now(),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        mode: currentMode, // 'intraday' or 'delivery'
+        stock,
+        qty,
+        buyPrice,
+        sellPrice,
+        buyValue: d.buyValue,
+        sellValue: d.sellValue,
+        turnover: d.turnover,
+        brokerage: d.brokerage,
+        dpCharges: d.dpCharges,
+        stt: d.stt,
+        exchangeTxn: d.exchangeTxn,
+        stampDuty: d.stampDuty,
+        gst: d.gst,
+        grossPnL,
+        netPnL,
+        netPct,
+        deductions: d.totalDeductions,
+        dateInfo: tradeDateInfo,
+        sortDate: currentMode === 'intraday' 
+          ? (document.getElementById('tradeDate').value || new Date().toISOString().split('T')[0])
+          : (document.getElementById('sellDate').value || document.getElementById('buyDate').value || new Date().toISOString().split('T')[0])
+      };
+
+      tradesHistory.unshift(newTrade);
+      persistHistory();
+      renderHistory();
+      updateCharts();
+      showToast(`Trade for ${stock} saved!`);
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyListContainer');
+      const badge = document.getElementById('historyBadge');
+      const histCount = document.getElementById('histCount');
+      const histNetTotal = document.getElementById('histNetTotal');
+
+      // Update badge
+      badge.textContent = tradesHistory.length;
+      badge.classList.toggle('hidden', tradesHistory.length === 0);
+      histCount.textContent = tradesHistory.length;
+
+      // Filtered list
+      let filtered = tradesHistory;
+      if (currentHistoryFilter === 'INTRADAY') {
+        filtered = tradesHistory.filter(t => t.mode === 'intraday');
+      } else if (currentHistoryFilter === 'DELIVERY') {
+        filtered = tradesHistory.filter(t => t.mode === 'delivery');
+      }
+
+      // Calculate total net profit for whole history
+      const totalNetSum = tradesHistory.reduce((acc, t) => acc + t.netPnL, 0);
+      histNetTotal.textContent = (totalNetSum >= 0 ? '+₹' : '-₹') + formatINR(Math.abs(totalNetSum));
+      histNetTotal.className = `font-bold ${totalNetSum >= 0 ? 'text-teal-400' : 'text-rose-400'}`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-6 text-slate-500 text-xs">
+            ${tradesHistory.length === 0 ? 'No trades saved yet.' : 'No trades match this filter.'}
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => {
+        const isProfit = t.netPnL >= 0;
+        const modeBadge = t.mode === 'intraday' 
+          ? '<span class="bg-teal-500/10 text-teal-400 border border-teal-500/30 text-[9px] px-1.5 py-0.5 rounded font-bold">MIS</span>'
+          : '<span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 text-[9px] px-1.5 py-0.5 rounded font-bold">CNC</span>';
+        
+        return `
+          <div class="bg-[#11161d] border border-slate-800 rounded-xl p-2.5 flex items-center justify-between text-xs transition hover:border-slate-700">
+            <div class="space-y-1">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-white text-xs">${t.stock}</span>
+                ${modeBadge}
+                <span class="text-[10px] text-slate-500">${t.dateInfo}</span>
+              </div>
+              <div class="text-[10px] text-slate-400">
+                ${t.qty} shares @ ₹${t.buyPrice} → ₹${t.sellPrice}
+                <span class="text-amber-400/80 ml-1">Fees: ₹${t.deductions.toFixed(1)}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <div class="font-black text-xs ${isProfit ? 'text-teal-400' : 'text-rose-400'}">
+                  ${isProfit ? '+' : ''}₹${t.netPnL.toFixed(2)}
+                </div>
+                <div class="text-[10px] font-semibold ${isProfit ? 'text-teal-400/80' : 'text-rose-400/80'}">
+                  ${isProfit ? '+' : ''}${t.netPct}%
+                </div>
+              </div>
+              <button onclick="deleteTrade(${t.id})" class="text-slate-500 hover:text-rose-400 p-1 text-xs transition" title="Delete">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setHistoryFilter(filter) {
+      currentHistoryFilter = filter;
+      document.getElementById('filterAll').className = filter === 'ALL' ? 'px-2.5 py-1 rounded-full bg-teal-500 text-slate-950 font-bold' : 'px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold';
+      document.getElementById('filterIntraday').className = filter === 'INTRADAY' ? 'px-2.5 py-1 rounded-full bg-teal-500 text-slate-950 font-bold' : 'px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold';
+      document.getElementById('filterDelivery').className = filter === 'DELIVERY' ? 'px-2.5 py-1 rounded-full bg-teal-500 text-slate-950 font-bold' : 'px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-semibold';
+      renderHistory();
+    }
+
+    function deleteTrade(id) {
+      tradesHistory = tradesHistory.filter(t => t.id !== id);
+      persistHistory();
+      renderHistory();
+      updateCharts();
+      showToast('Trade entry removed');
+    }
+
+    function clearHistory() {
+      if (tradesHistory.length === 0) return;
+      tradesHistory = [];
+      persistHistory();
+      renderHistory();
+      updateCharts();
+      showToast('All trades cleared from memory');
+    }
+
+    // Toggle analytics view collapse
+    function toggleAnalyticsView() {
+      const body = document.getElementById('analyticsBody');
+      const btn = document.getElementById('analyticsMinimizeBtn');
+      const isHidden = body.classList.contains('hidden');
+      if (isHidden) {
+        body.classList.remove('hidden');
+        btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+      } else {
+        body.classList.add('hidden');
+        btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+      }
+    }
+
+    // Chart.js Visual Analytics Engine
+    function updateCharts() {
+      renderMonthlyHistogram();
+      renderTaxBreakdownChart();
+      renderWinLossChart();
+    }
+
+    function renderMonthlyHistogram() {
+      const ctx = document.getElementById('monthlyPnlChart');
+      if (!ctx) return;
+
+      // Group net PnL by Month (e.g., "Nov 2026")
+      const monthMap = {};
+      tradesHistory.forEach(t => {
+        let dateObj = new Date(t.sortDate);
+        if (isNaN(dateObj.getTime())) dateObj = new Date();
+        const monthKey = dateObj.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        monthMap[monthKey] = (monthMap[monthKey] || 0) + t.netPnL;
+      });
+
+      const labels = Object.keys(monthMap);
+      const data = Object.values(monthMap);
+
+      document.getElementById('monthlyBestPill').textContent = `${labels.length} Months Tracked`;
+
+      // Fallback empty view
+      const chartLabels = labels.length ? labels : ['Current'];
+      const chartData = data.length ? data : [0];
+      const bgColors = chartData.map(v => v >= 0 ? 'rgba(0, 208, 156, 0.85)' : 'rgba(235, 87, 87, 0.85)');
+      const borderColors = chartData.map(v => v >= 0 ? '#00D09C' : '#EB5757');
+
+      if (pnlChartInstance) pnlChartInstance.destroy();
+
+      pnlChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: chartLabels,
+          datasets: [{
+            label: 'Net P&L (₹)',
+            data: chartData,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `Net P&L: ₹${ctx.parsed.y.toFixed(2)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', font: { size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#94a3b8',
+                font: { size: 10 },
+                callback: (val) => '₹' + val
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTaxBreakdownChart() {
+      const ctx = document.getElementById('taxBreakdownChart');
+      if (!ctx) return;
+
+      let bkg = 0, dp = 0, stt = 0, gst = 0, other = 0;
+
+      if (tradesHistory.length > 0) {
+        tradesHistory.forEach(t => {
+          bkg += t.brokerage || 0;
+          dp += t.dpCharges || 0;
+          stt += t.stt || 0;
+          gst += t.gst || 0;
+          other += (t.exchangeTxn || 0) + (t.stampDuty || 0);
+        });
+      } else {
+        // Mock current live trade preview
+        const live = calculateDeductions(
+          parseInt(document.getElementById('qty').value) || 0,
+          parseFloat(document.getElementById('buyPrice').value) || 0,
+          parseFloat(document.getElementById('sellPrice').value) || 0,
+          currentMode
+        );
+        bkg = live.brokerage;
+        dp = live.dpCharges;
+        stt = live.stt;
+        gst = live.gst;
+        other = live.exchangeTxn + live.stampDuty;
+      }
+
+      if (taxChartInstance) taxChartInstance.destroy();
+
+      taxChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Brokerage', 'DP Fee', 'STT', 'GST', 'Govt/Txn'],
+          datasets: [{
+            data: [bkg, dp, stt, gst, other],
+            backgroundColor: [
+              '#38bdf8', // sky
+              '#f59e0b', // amber
+              '#818cf8', // indigo
+              '#ec4899', // pink
+              '#64748b'  // slate
+            ],
+            borderColor: '#11161d',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94a3b8', boxWidth: 10, font: { size: 9 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `₹${ctx.parsed.toFixed(2)}`
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    function renderWinLossChart() {
+      const ctx = document.getElementById('winLossChart');
+      if (!ctx) return;
+
+      let wins = 0;
+      let losses = 0;
+
+      tradesHistory.forEach(t => {
+        if (t.netPnL >= 0) wins++;
+        else losses++;
+      });
+
+      if (tradesHistory.length === 0) {
+        wins = 1; 
+        losses = 0;
+      }
+
+      if (winLossChartInstance) winLossChartInstance.destroy();
+
+      winLossChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: [`Wins (${wins})`, `Losses (${losses})`],
+          datasets: [{
+            data: [wins, losses],
+            backgroundColor: ['#00D09C', '#EB5757'],
+            borderColor: '#11161d',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94a3b8', boxWidth: 10, font: { size: 9 } }
+            }
+          }
+        }
+      });
+    }
+
+    // CSV & Excel Exporters
+    function exportToCSV() {
+      if (tradesHistory.length === 0) {
+        showToast('No trades to export! Save a trade first.');
+        return;
+      }
+
+      const headers = [
+        "Trade ID", "Mode", "Stock Name", "Dates", "Quantity",
+        "Buy Price (INR)", "Sell Price (INR)", "Buy Turnover (INR)", "Sell Turnover (INR)", "Total Turnover (INR)",
+        "Gross P&L (INR)", "Groww Brokerage (INR)", "DP Charges (INR)", "STT (INR)", "Exchange & SEBI (INR)", 
+        "Stamp Duty (INR)", "GST 18% (INR)", "Total Charges (INR)", "Net P&L (INR)", "Net Return %"
+      ];
+
+      const csvRows = [];
+      csvRows.push(headers.join(","));
+
+      tradesHistory.forEach(t => {
+        const row = [
+          t.id,
+          t.mode.toUpperCase(),
+          `"${t.stock}"`,
+          `"${t.dateInfo}"`,
+          t.qty,
+          t.buyPrice,
+          t.sellPrice,
+          (t.buyValue || (t.qty * t.buyPrice)).toFixed(2),
+          (t.sellValue || (t.qty * t.sellPrice)).toFixed(2),
+          (t.turnover || (t.qty * (t.buyPrice + t.sellPrice))).toFixed(2),
+          t.grossPnL,
+          (t.brokerage || 0).toFixed(2),
+          (t.dpCharges || 0).toFixed(2),
+          (t.stt || 0).toFixed(2),
+          (t.exchangeTxn || 0).toFixed(2),
+          (t.stampDuty || 0).toFixed(2),
+          (t.gst || 0).toFixed(2),
+          t.deductions.toFixed(2),
+          t.netPnL.toFixed(2),
+          `"${t.netPct}%"`
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      downloadFile(blob, `Groww_Trades_${new Date().toISOString().split('T')[0]}.csv`);
+      showToast('CSV export downloaded!');
+    }
+
+    function exportToExcel() {
+      if (tradesHistory.length === 0) {
+        showToast('No trades to export! Save a trade first.');
+        return;
+      }
+
+      // Generate HTML-based Excel XML Table
+      let tableHtml = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Groww Trades</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
+        <body>
+        <table border="1">
+          <tr style="background-color: #00D09C; color: #000; font-weight: bold;">
+            <th>Mode</th><th>Stock</th><th>Dates</th><th>Qty</th><th>Buy Price</th><th>Sell Price</th>
+            <th>Gross P&L</th><th>Brokerage</th><th>DP Charges</th><th>STT</th><th>Txn & SEBI</th>
+            <th>Stamp Duty</th><th>GST</th><th>Total Fees</th><th>Net P&L</th><th>Return %</th>
+          </tr>
+      `;
+
+      tradesHistory.forEach(t => {
+        const pnlColor = t.netPnL >= 0 ? '#10b981' : '#ef4444';
+        tableHtml += `
+          <tr>
+            <td>${t.mode.toUpperCase()}</td>
+            <td>${t.stock}</td>
+            <td>${t.dateInfo}</td>
+            <td>${t.qty}</td>
+            <td>${t.buyPrice}</td>
+            <td>${t.sellPrice}</td>
+            <td>${t.grossPnL}</td>
+            <td>${(t.brokerage || 0).toFixed(2)}</td>
+            <td>${(t.dpCharges || 0).toFixed(2)}</td>
+            <td>${(t.stt || 0).toFixed(2)}</td>
+            <td>${(t.exchangeTxn || 0).toFixed(2)}</td>
+            <td>${(t.stampDuty || 0).toFixed(2)}</td>
+            <td>${(t.gst || 0).toFixed(2)}</td>
+            <td>${t.deductions.toFixed(2)}</td>
+            <td style="color: ${pnlColor}; font-weight: bold;">${t.netPnL.toFixed(2)}</td>
+            <td>${t.netPct}%</td>
+          </tr>
+        `;
+      });
+
+      tableHtml += `</table></body></html>`;
+
+      const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+      downloadFile(blob, `Groww_Trades_${new Date().toISOString().split('T')[0]}.xls`);
+      showToast('Excel spreadsheet downloaded!');
+    }
+
+    function downloadFile(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportTradeHistory() {
+      if (tradesHistory.length === 0) {
+        showToast('No trades to export!');
+        return;
+      }
+      let text = "Trade History - Groww Calculator\n";
+      tradesHistory.forEach((t, i) => {
+        text += `${i+1}. [${t.mode.toUpperCase()}] ${t.stock} | Qty: ${t.qty} | Buy: ₹${t.buyPrice} | Sell: ₹${t.sellPrice} | Net: ₹${t.netPnL} (${t.netPct}%) | Fees: ₹${t.deductions} | ${t.dateInfo}\n`;
+      });
+
+      // Copy using textarea fallback method
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Trade history copied to clipboard!');
+      } catch (err) {
+        showToast('Could not copy automatically');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function persistHistory() {
+      try {
+        localStorage.setItem('groww_calculator_history', JSON.stringify(tradesHistory));
+      } catch (e) {
+        // Fallback gracefully
+      }
+    }
+
+    function loadHistoryFromStorage() {
+      try {
+        const stored = localStorage.getItem('groww_calculator_history');
+        if (stored) {
+          tradesHistory = JSON.parse(stored);
+          renderHistory();
+        }
+      } catch (e) {
+        tradesHistory = [];
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastMessage');
+      const text = document.getElementById('toastText');
+      text.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2500);
+    }
+
+    function formatINR(val) {
+      return (Number(val) || 0).toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+  </script>
+</body>
+</html>
